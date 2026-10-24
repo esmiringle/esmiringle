@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>esmiringle - Anonymous Chat & Video Call</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            glow: '#00ff88'
+                        },
+                        neon: {
+                            purple: '#a855f7',
+                            pink: '#ec4899',
+                            cyan: '#06b6d4',
+                            blue: '#3b82f6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Socket.io Client -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0f17; color: #f3f4f6; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 9999px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 antialiased">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetToLanding()">
+                <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-emerald-500 to-teal-400 shadow-lg shadow-brand-500/30">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-black animate-pulse"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-1.5">
+                        <span class="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-500 via-teal-400 to-neon-purple">esmiringle</span>
+                        <span class="px-2 py-0.5 text-[10px] font-bold uppercase bg-brand-500/10 text-brand-500 border border-brand-500/30 rounded-full">LIVE</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+
+        <!-- LANDING PANEL -->
+        <section id="landingPanel" class="max-w-4xl mx-auto w-full space-y-8 py-4 text-center">
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+                Talk to real strangers <span class="bg-clip-text text-transparent bg-gradient-to-r from-neon-purple via-pink-500 to-brand-500">face-to-face</span>
+            </h1>
+            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
+                Real-time anonymous video calls and text messaging powered by WebRTC.
+            </p>
+            <button onclick="startConnection()" class="px-10 py-4 rounded-xl bg-gradient-to-r from-brand-600 via-emerald-500 to-teal-500 text-slate-950 font-extrabold text-base hover:brightness-110 transition shadow-xl shadow-brand-500/25">
+                START CHATTING NOW
+            </button>
+        </section>
+
+        <!-- CHAT PANEL -->
+        <section id="chatPanel" class="hidden flex-1 flex flex-col lg:flex-row gap-4 h-[calc(100vh-120px)] min-h-[550px]">
+            <div class="flex-1 flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden relative shadow-2xl">
+                <div class="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-slate-950/90 to-transparent flex items-center justify-between">
+                    <div class="flex items-center space-x-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-700/60 text-xs">
+                        <span id="callStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+                        <span id="callStatusText" class="font-medium text-slate-200">Searching for real user...</span>
+                    </div>
+                </div>
+
+                <!-- Searching Overlay -->
+                <div id="searchingOverlay" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                    <div class="relative w-16 h-16 mb-4 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin"></div>
+                    <h3 class="text-lg font-bold text-white mb-1">Looking for a partner online...</h3>
+                    <button onclick="skipStranger()" class="mt-3 px-4 py-2 rounded-xl bg-slate-800 text-xs text-slate-200">Cancel</button>
+                </div>
+
+                <!-- Video Screens -->
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-slate-950 relative">
+                    <div class="relative flex-1 bg-slate-900 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                        <video id="strangerVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+                        <div class="absolute top-3 left-3 bg-slate-950/70 px-2.5 py-1 rounded-md text-[11px] text-slate-300 font-semibold">Stranger</div>
+                    </div>
+                    <div class="relative flex-1 bg-slate-900 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                        <video id="userVideo" autoplay muted playsinline class="w-full h-full object-cover transform -scale-x-100"></video>
+                        <div class="absolute top-3 left-3 bg-slate-950/70 px-2.5 py-1 rounded-md text-[11px] text-slate-300 font-semibold">You</div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="p-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+                    <button onclick="skipStranger()" class="px-6 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm">NEXT</button>
+                    <button onclick="resetToLanding()" class="px-4 py-2.5 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 text-xs">Stop</button>
+                </div>
+            </div>
+
+            <!-- Text Chat Drawer -->
+            <div class="w-full lg:w-96 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+                <div id="chatMessages" class="flex-1 p-4 space-y-3 overflow-y-auto text-xs"></div>
+                <div class="p-3 bg-slate-950 border-t border-slate-800">
+                    <form onsubmit="handleSendMessage(event)" class="flex items-center space-x-2">
+                        <input type="text" id="chatInput" placeholder="Type a message..." disabled class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none">
+                        <button type="submit" id="sendBtn" disabled class="p-2 bg-brand-500 text-slate-950 rounded-xl font-bold">Send</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- JS REAL USER WEBRTC & SOCKET LOGIC -->
+    <script>
+        // Palitan ito ng live Render URL mo kapag na-deploy na:
+        const SERVER_URL = 'https://esmiringle-server.onrender.com'; 
+        
+        let socket;
+        let localStream;
+        let peerConnection;
+        let partnerId = null;
+        let isInitiator = false;
+
+        const iceServers = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
+        async function startConnection() {
+            document.getElementById('landingPanel').classList.add('hidden');
+            document.getElementById('chatPanel').classList.remove('hidden');
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('userVideo').srcObject = localStream;
+            } catch (err) {
+                alert('Kailangan ng camera at microphone permission para sa video call.');
+                resetToLanding();
+                return;
+            }
+
+            // Kumonekta sa Render Backend
+            socket = io(SERVER_URL);
+
+            socket.on('connect', () => {
+                console.log('Konektado sa server, naghahanap ng match...');
+                socket.emit('find_match');
+            });
+
+            socket.on('waiting', () => {
+                document.getElementById('searchingOverlay').classList.remove('hidden');
+                document.getElementById('callStatusText').innerText = "Naghihintay ng ibang user...";
+            });
+
+            socket.on('matched', async (data) => {
+                partnerId = data.partnerId;
+                isInitiator = data.initiator;
+                document.getElementById('searchingOverlay').classList.add('hidden');
+                document.getElementById('callStatusText').innerText = "Konektado sa Totoong Stranger!";
+                document.getElementById('callStatusDot').className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+                
+                document.getElementById('chatInput').disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+
+                setupPeerConnection();
+            });
+
+            socket.on('offer', async (data) => {
+                if (!peerConnection) setupPeerConnection();
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.emit('answer', { target: data.sender, answer });
+            });
+
+            socket.on('answer', async (data) => {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            });
+
+            socket.on('ice-candidate', async (data) => {
+                if (peerConnection && data.candidate) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                }
+            });
+        }
+
+        function setupPeerConnection() {
+            peerConnection = new RTCPeerConnection(iceServers);
+
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+
+            peerConnection.ontrack = (event) => {
+                document.getElementById('strangerVideo').srcObject = event.streams[0];
+            };
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate && partnerId) {
+                    socket.emit('ice-candidate', { target: partnerId, candidate: event.candidate });
+                }
+            };
+
+            if (isInitiator) {
+                peerConnection.createOffer().then(offer => {
+                    peerConnection.setLocalDescription(offer);
+                    socket.emit('offer', { target: partnerId, offer });
+                });
+            }
+        }
+
+        function skipStranger() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (socket) {
+                socket.emit('skip_chat');
+                socket.emit('find_match');
+            }
+            document.getElementById('searchingOverlay').classList.remove('hidden');
+            document.getElementById('strangerVideo').srcObject = null;
+            document.getElementById('chatInput').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+        }
+
+        function resetToLanding() {
+            if (socket) socket.disconnect();
+            if (peerConnection) peerConnection.close();
+            if (localStream) localStream.getTracks().forEach(t => t.stop());
+            document.getElementById('chatPanel').classList.add('hidden');
+            document.getElementById('landingPanel').classList.remove('hidden');
+        }
+
+        function handleSendMessage(e) {
+            e.preventDefault();
+            // Pwede mong dagdagan ng socket chat messaging event dito
+        }
+    </script>
+</body>
+</html>
