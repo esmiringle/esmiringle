@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>esmiringle - Anonymous Chat & Video Call</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -12,27 +11,14 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#f0fdf4',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            glow: '#00ff88'
-                        },
-                        neon: {
-                            purple: '#a855f7',
-                            pink: '#ec4899',
-                            cyan: '#06b6d4',
-                            blue: '#3b82f6'
-                        }
+                        brand: { 500: '#22c55e', 600: '#16a34a' },
+                        neon: { purple: '#a855f7', pink: '#ec4899', cyan: '#06b6d4' }
                     }
                 }
             }
         }
     </script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Socket.io Client -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -45,17 +31,15 @@
 <body class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 antialiased">
 
     <!-- Top Navigation Header -->
-    <header class="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 lg:px-8 py-3">
+    <header class="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-4 lg:px-8 py-3">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div class="flex items-center space-x-3 cursor-pointer" onclick="resetToLanding()">
-                <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-emerald-500 to-teal-400 shadow-lg shadow-brand-500/30">
-                    <i data-lucide="sparkles" class="w-6 h-6 text-black animate-pulse"></i>
+                <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-teal-400 shadow-lg shadow-brand-500/30">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-black"></i>
                 </div>
                 <div>
-                    <div class="flex items-center space-x-1.5">
-                        <span class="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-500 via-teal-400 to-neon-purple">esmiringle</span>
-                        <span class="px-2 py-0.5 text-[10px] font-bold uppercase bg-brand-500/10 text-brand-500 border border-brand-500/30 rounded-full">LIVE</span>
-                    </div>
+                    <span class="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-500 via-teal-400 to-neon-purple">esmiringle</span>
+                    <span class="ml-2 px-2 py-0.5 text-[10px] font-bold uppercase bg-brand-500/10 text-brand-500 border border-brand-500/30 rounded-full">LIVE</span>
                 </div>
             </div>
         </div>
@@ -97,6 +81,7 @@
                 <!-- Video Screens -->
                 <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-slate-950 relative">
                     <div class="relative flex-1 bg-slate-900 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                        <!-- Naka-autoplay at siniguraduhing maririnig ang audio -->
                         <video id="strangerVideo" autoplay playsinline class="w-full h-full object-cover"></video>
                         <div class="absolute top-3 left-3 bg-slate-950/70 px-2.5 py-1 rounded-md text-[11px] text-slate-300 font-semibold">Stranger</div>
                     </div>
@@ -126,9 +111,8 @@
         </section>
     </main>
 
-    <!-- JS REAL USER WEBRTC & SOCKET LOGIC -->
+    <!-- JS REAL USER WEBRTC & AUDIO FIX -->
     <script>
-        // Palitan ito ng live Render URL mo kapag na-deploy na:
         const SERVER_URL = 'https://esmiringle-server.onrender.com'; 
         
         let socket;
@@ -144,6 +128,10 @@
             ]
         };
 
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+
         async function startConnection() {
             document.getElementById('landingPanel').classList.add('hidden');
             document.getElementById('chatPanel').classList.remove('hidden');
@@ -157,11 +145,9 @@
                 return;
             }
 
-            // Kumonekta sa Render Backend
             socket = io(SERVER_URL);
 
             socket.on('connect', () => {
-                console.log('Konektado sa server, naghahanap ng match...');
                 socket.emit('find_match');
             });
 
@@ -205,12 +191,18 @@
         function setupPeerConnection() {
             peerConnection = new RTCPeerConnection(iceServers);
 
+            // I-dagdag ang local tracks sa connection
             localStream.getTracks().forEach(track => {
                 peerConnection.addTrack(track, localStream);
             });
 
+            // Masigurong maririnig ang boses ng ka-match
             peerConnection.ontrack = (event) => {
-                document.getElementById('strangerVideo').srcObject = event.streams[0];
+                const strangerVideo = document.getElementById('strangerVideo');
+                if (strangerVideo.srcObject !== event.streams[0]) {
+                    strangerVideo.srcObject = event.streams[0];
+                    strangerVideo.play().catch(e => console.log("Audio play blocked, needs user interaction:", e));
+                }
             };
 
             peerConnection.onicecandidate = (event) => {
@@ -252,7 +244,6 @@
 
         function handleSendMessage(e) {
             e.preventDefault();
-            // Pwede mong dagdagan ng socket chat messaging event dito
         }
     </script>
 </body>
