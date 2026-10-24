@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>esmiringle - Anonymous Chat & Video Call</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -18,6 +19,7 @@
             }
         }
     </script>
+    <!-- Lucide Icons & Socket.io -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
@@ -48,22 +50,48 @@
     <!-- Main Container -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
 
-        <!-- LANDING PANEL -->
-        <section id="landingPanel" class="max-w-4xl mx-auto w-full space-y-8 py-4 text-center">
-            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-                Talk to real strangers <span class="bg-clip-text text-transparent bg-gradient-to-r from-neon-purple via-pink-500 to-brand-500">face-to-face</span>
-            </h1>
-            <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
-                Real-time anonymous video calls and text messaging powered by WebRTC.
-            </p>
-            <button onclick="startConnection()" class="px-10 py-4 rounded-xl bg-gradient-to-r from-brand-600 via-emerald-500 to-teal-500 text-slate-950 font-extrabold text-base hover:brightness-110 transition shadow-xl shadow-brand-500/25">
-                START CHATTING NOW
-            </button>
+        <!-- ================= LANDING PANEL WITH MODE SELECTION ================= -->
+        <section id="landingPanel" class="max-w-4xl mx-auto w-full space-y-8 py-4">
+            <div class="text-center space-y-3">
+                <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+                    Talk to real strangers with your <span class="bg-clip-text text-transparent bg-gradient-to-r from-neon-purple via-pink-500 to-brand-500">preferred mode</span>
+                </h1>
+                <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
+                    Choose between text-only messaging or face-to-face video calls with real users.
+                </p>
+            </div>
+
+            <!-- Mode Selection Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                <!-- Text Mode Card -->
+                <div onclick="selectMode('text')" id="card-mode-text" class="mode-card group p-6 rounded-2xl bg-slate-900/90 border-2 border-slate-800 hover:border-brand-500 cursor-pointer transition shadow-xl">
+                    <div class="w-12 h-12 rounded-xl bg-slate-800 text-brand-500 flex items-center justify-center mb-4 group-hover:bg-brand-500/20 transition">
+                        <i data-lucide="message-square" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-1">Text Chat Mode</h3>
+                    <p class="text-xs text-slate-400">Pure anonymous text messaging with real strangers.</p>
+                </div>
+
+                <!-- Video Mode Card -->
+                <div onclick="selectMode('video')" id="card-mode-video" class="mode-card group p-6 rounded-2xl bg-slate-900/90 border-2 border-brand-500 cursor-pointer transition shadow-xl">
+                    <div class="w-12 h-12 rounded-xl bg-brand-500/20 text-brand-500 flex items-center justify-center mb-4">
+                        <i data-lucide="video" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-1">Video Call Mode</h3>
+                    <p class="text-xs text-slate-400">Face-to-face random video call with real users.</p>
+                </div>
+            </div>
+
+            <div class="text-center pt-4">
+                <button onclick="startConnection()" class="px-10 py-4 rounded-xl bg-gradient-to-r from-brand-600 via-emerald-500 to-teal-500 text-slate-950 font-extrabold text-base hover:brightness-110 transition shadow-xl shadow-brand-500/25">
+                    START CHATTING NOW
+                </button>
+            </div>
         </section>
 
-        <!-- CHAT PANEL -->
+        <!-- ================= CHAT PANEL ================= -->
         <section id="chatPanel" class="hidden flex-1 flex flex-col lg:flex-row gap-4 h-[calc(100vh-120px)] min-h-[550px]">
-            <div class="flex-1 flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden relative shadow-2xl">
+            <div id="videoContainerWrapper" class="flex-1 flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden relative shadow-2xl">
                 <div class="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-slate-950/90 to-transparent flex items-center justify-between">
                     <div class="flex items-center space-x-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-700/60 text-xs">
                         <span id="callStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
@@ -78,10 +106,9 @@
                     <button onclick="skipStranger()" class="mt-3 px-4 py-2 rounded-xl bg-slate-800 text-xs text-slate-200">Cancel</button>
                 </div>
 
-                <!-- Video Screens -->
-                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-slate-950 relative">
+                <!-- Video Screens (Makikita lang kung Video Mode ang pinili) -->
+                <div id="videoScreensArea" class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-slate-950 relative">
                     <div class="relative flex-1 bg-slate-900 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
-                        <!-- Naka-autoplay at siniguraduhing maririnig ang audio -->
                         <video id="strangerVideo" autoplay playsinline class="w-full h-full object-cover"></video>
                         <div class="absolute top-3 left-3 bg-slate-950/70 px-2.5 py-1 rounded-md text-[11px] text-slate-300 font-semibold">Stranger</div>
                     </div>
@@ -111,7 +138,7 @@
         </section>
     </main>
 
-    <!-- JS REAL USER WEBRTC & AUDIO FIX -->
+    <!-- JS LOGIC -->
     <script>
         const SERVER_URL = 'https://esmiringle-server.onrender.com'; 
         
@@ -120,6 +147,7 @@
         let peerConnection;
         let partnerId = null;
         let isInitiator = false;
+        let selectedMode = 'video'; // Default mode
 
         const iceServers = {
             iceServers: [
@@ -132,15 +160,38 @@
             lucide.createIcons();
         });
 
+        function selectMode(mode) {
+            selectedMode = mode;
+            document.querySelectorAll('.mode-card').forEach(card => {
+                card.classList.remove('border-brand-500', 'shadow-brand-500/20');
+                card.classList.add('border-slate-800');
+            });
+            const activeCard = document.getElementById(`card-mode-${mode}`);
+            if (activeCard) {
+                activeCard.classList.remove('border-slate-800');
+                activeCard.classList.add('border-brand-500');
+            }
+        }
+
         async function startConnection() {
             document.getElementById('landingPanel').classList.add('hidden');
             document.getElementById('chatPanel').classList.remove('hidden');
 
+            // Kung Text Mode ang pinili, itago ang video screen area
+            if (selectedMode === 'text') {
+                document.getElementById('videoScreensArea').classList.add('hidden');
+            } else {
+                document.getElementById('videoScreensArea').classList.remove('hidden');
+            }
+
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('userVideo').srcObject = localStream;
+                const constraints = selectedMode === 'text' ? { video: false, audio: false } : { video: true, audio: true };
+                if (selectedMode !== 'text') {
+                    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    document.getElementById('userVideo').srcObject = localStream;
+                }
             } catch (err) {
-                alert('Kailangan ng camera at microphone permission para sa video call.');
+                alert('Kailangan ng camera/mic permission para sa video mode.');
                 resetToLanding();
                 return;
             }
@@ -148,7 +199,7 @@
             socket = io(SERVER_URL);
 
             socket.on('connect', () => {
-                socket.emit('find_match');
+                socket.emit('find_match', { mode: selectedMode });
             });
 
             socket.on('waiting', () => {
@@ -166,10 +217,13 @@
                 document.getElementById('chatInput').disabled = false;
                 document.getElementById('sendBtn').disabled = false;
 
-                setupPeerConnection();
+                if (selectedMode === 'video') {
+                    setupPeerConnection();
+                }
             });
 
             socket.on('offer', async (data) => {
+                if (selectedMode === 'text') return;
                 if (!peerConnection) setupPeerConnection();
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
                 const answer = await peerConnection.createAnswer();
@@ -178,30 +232,36 @@
             });
 
             socket.on('answer', async (data) => {
+                if (selectedMode === 'text') return;
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
             });
 
             socket.on('ice-candidate', async (data) => {
+                if (selectedMode === 'text') return;
                 if (peerConnection && data.candidate) {
                     await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
                 }
+            });
+
+            socket.on('chat_message', (data) => {
+                appendChatMessage('Stranger', data.message);
             });
         }
 
         function setupPeerConnection() {
             peerConnection = new RTCPeerConnection(iceServers);
 
-            // I-dagdag ang local tracks sa connection
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
-            });
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+            }
 
-            // Masigurong maririnig ang boses ng ka-match
             peerConnection.ontrack = (event) => {
                 const strangerVideo = document.getElementById('strangerVideo');
                 if (strangerVideo.srcObject !== event.streams[0]) {
                     strangerVideo.srcObject = event.streams[0];
-                    strangerVideo.play().catch(e => console.log("Audio play blocked, needs user interaction:", e));
+                    strangerVideo.play().catch(e => console.log(e));
                 }
             };
 
@@ -226,12 +286,14 @@
             }
             if (socket) {
                 socket.emit('skip_chat');
-                socket.emit('find_match');
+                socket.emit('find_match', { mode: selectedMode });
             }
             document.getElementById('searchingOverlay').classList.remove('hidden');
-            document.getElementById('strangerVideo').srcObject = null;
+            const strangerVideo = document.getElementById('strangerVideo');
+            if (strangerVideo) strangerVideo.srcObject = null;
             document.getElementById('chatInput').disabled = true;
             document.getElementById('sendBtn').disabled = true;
+            document.getElementById('chatMessages').innerHTML = '';
         }
 
         function resetToLanding() {
@@ -244,6 +306,22 @@
 
         function handleSendMessage(e) {
             e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg || !socket) return;
+
+            appendChatMessage('You', msg);
+            socket.emit('chat_message', { target: partnerId, message: msg });
+            input.value = '';
+        }
+
+        function appendChatMessage(sender, text) {
+            const chatBox = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = sender === 'You' ? 'text-right' : 'text-left';
+            div.innerHTML = `<span class="font-bold text-teal-400">${sender}:</span> <span class="text-slate-200">${text}</span>`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
     </script>
 </body>
