@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>esmiringle - Anonymous Chat & Video Call</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            glow: '#00ff88'
+                        },
+                        neon: {
+                            purple: '#a855f7',
+                            pink: '#ec4899',
+                            cyan: '#06b6d4',
+                            blue: '#3b82f6'
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'wave': 'wave 1.2s ease-in-out infinite'
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { opacity: 1, filter: 'drop-shadow(0 0 15px rgba(34, 197, 94, 0.6))' },
+                            '50%': { opacity: 0.7, filter: 'drop-shadow(0 0 5px rgba(34, 197, 94, 0.2))' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-6px)' }
+                        },
+                        wave: {
+                            '0%, 100%': { transform: 'scaleY(0.3)' },
+                            '50%': { transform: 'scaleY(1)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Custom Scrollbar & Utility Styles -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0b0f17;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 1);
+        }
+
+        /* Dynamic Visualizer Canvas Styling */
+        .neon-border {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.25), inset 0 0 15px rgba(168, 85, 247, 0.15);
+        }
+        .neon-border-green {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+        }
+
+        /* Video Filters */
+        .filter-normal { filter: none; }
+        .filter-bw { filter: grayscale(100%) contrast(120%); }
+        .filter-neon { filter: hue-rotate(180deg) saturate(200%) contrast(110%); }
+        .filter-warm { filter: sepia(40%) saturate(140%) hue-rotate(-15deg); }
+        .filter-cyber { filter: invert(10%) hue-rotate(90deg) saturate(300%); }
+
+        /* Custom Wave animation bars */
+        .wave-bar:nth-child(1) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(2) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.4s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.5s; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100 antialiased selection:bg-brand-500 selection:text-black">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 lg:px-8 py-3 transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            
+            <!-- Brand Logo & Tagline -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetToLanding()">
+                <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-emerald-500 to-teal-400 shadow-lg shadow-brand-500/30">
+                    <i data-lucide="sparkles" class="w-6 h-6 text-black animate-pulse"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-1.5">
+                        <span class="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-500 via-teal-400 to-neon-purple drop-shadow-md">esmiringle</span>
+                        <span class="px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase bg-brand-500/10 text-brand-500 border border-brand-500/30 rounded-full">LIVE</span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Connect with real strangers anonymously</p>
+                </div>
+            </div>
+
+            <!-- Realtime Metrics & Region Indicators -->
+            <div class="hidden md:flex items-center space-x-4 bg-slate-900/80 border border-slate-800 rounded-full px-4 py-1.5 text-xs">
+                <div class="flex items-center space-x-2">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span class="font-bold text-slate-200" id="onlineCountDisplay">14,392</span>
+                    <span class="text-slate-400">online now</span>
+                </div>
+                <div class="h-3 w-px bg-slate-800"></div>
+                <div class="flex items-center space-x-1.5 text-slate-300">
+                    <i data-lucide="globe" class="w-3.5 h-3.5 text-teal-400"></i>
+                    <span class="font-medium">Asia-PH • Low Latency</span>
+                </div>
+            </div>
+
+            <!-- Actions & Utility Triggers -->
+            <div class="flex items-center space-x-2">
+                <button onclick="toggleSound()" id="soundToggleBtn" title="Toggle Sound FX" class="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition">
+                    <i data-lucide="volume-2" class="w-5 h-5" id="soundIcon"></i>
+                </button>
+                <button onclick="openModal('guidelinesModal')" title="Safety & Guidelines" class="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition flex items-center space-x-1">
+                    <i data-lucide="shield-check" class="w-5 h-5 text-brand-500"></i>
+                    <span class="text-xs font-semibold hidden sm:inline">Safety</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+
+        <!-- ================= PANEL 1: LANDING & SETUP ================= -->
+        <section id="landingPanel" class="max-w-4xl mx-auto w-full space-y-8 py-4">
+            
+            <!-- Hero Header -->
+            <div class="text-center space-y-3">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-neon-purple/10 border border-neon-purple/30 text-neon-purple text-xs font-semibold uppercase tracking-wider mb-2">
+                    <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                    <span>Fast • Anonymous • No Registration Needed</span>
+                </div>
+                <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+                    Talk to strangers who share your <span class="bg-clip-text text-transparent bg-gradient-to-r from-neon-purple via-pink-500 to-brand-500">vibe & interests</span>
+                </h1>
+                <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
+                    Experience seamless anonymous video calls, voice rooms, or instant text messaging with real people in seconds.
+                </p>
+            </div>
+
+            <!-- Chat Mode Selection Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Text Mode Card -->
+                <div onclick="selectMode('text')" id="card-mode-text" class="mode-card group relative p-6 rounded-2xl bg-slate-900/90 border-2 border-slate-800 hover:border-brand-500/80 cursor-pointer transition-all duration-300 shadow-xl hover:shadow-brand-500/10">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-slate-800 group-hover:bg-brand-500/20 text-brand-500 flex items-center justify-center transition">
+                            <i data-lucide="message-square" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">Popular</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-1 group-hover:text-brand-500 transition">Text Chat Mode</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Pure anonymous 1-on-1 text messaging with real-time typing indicators and tags.</p>
+                </div>
+
+                <!-- Voice Mode Card -->
+                <div onclick="selectMode('voice')" id="card-mode-voice" class="mode-card group relative p-6 rounded-2xl bg-slate-900/90 border-2 border-slate-800 hover:border-neon-cyan/80 cursor-pointer transition-all duration-300 shadow-xl hover:shadow-neon-cyan/10">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-slate-800 group-hover:bg-neon-cyan/20 text-neon-cyan flex items-center justify-center transition">
+                            <i data-lucide="mic" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">Voice Only</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-1 group-hover:text-neon-cyan transition">Voice Call Room</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Audio-only match with dynamic audio visualizer animation. Perfect for late night chitchats.</p>
+                </div>
+
+                <!-- Video Mode Card -->
+                <div onclick="selectMode('video')" id="card-mode-video" class="mode-card group relative p-6 rounded-2xl bg-slate-900/90 border-2 border-brand-500/60 shadow-lg shadow-brand-500/10 cursor-pointer transition-all duration-300">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-brand-500/20 text-brand-500 flex items-center justify-center transition">
+                            <i data-lucide="video" class="w-6 h-6"></i>
+                        </div>
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30 animate-pulse">HD Cam</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-1 text-brand-400">Video Call Mode</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Face-to-face random video call with custom dynamic camera filters & background effects.</p>
+                </div>
+            </div>
+
+            <!-- Interest Tags System & Preferences -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5 backdrop-blur-sm">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center space-x-1.5">
+                        <i data-lucide="hash" class="w-4 h-4 text-brand-500"></i>
+                        <span>Add Your Topics / Interest Tags (Optional)</span>
+                    </label>
+                    <div class="flex flex-wrap items-center gap-2 p-2.5 bg-slate-950 border border-slate-800 rounded-xl focus-within:border-brand-500 transition">
+                        <div id="activeTagsContainer" class="flex flex-wrap gap-2"></div>
+                        <input type="text" id="tagInput" placeholder="Type interest and press Enter (e.g. #OPM, #Valorant)..." class="flex-1 bg-transparent text-sm text-slate-200 focus:outline-none min-w-[200px] py-1 px-2">
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1.5">You will be prioritized to match strangers who share at least one tag.</p>
+                </div>
+
+                <!-- Preset Interest Pills -->
+                <div>
+                    <span class="text-xs text-slate-400 font-medium block mb-2">Trending Tags in PH:</span>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="addPresetTag('Pinoy')" class="px-3 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center space-x-1">
+                            <span>🇵🇭 #Pinoy</span>
+                        </button>
+                        <button onclick="addPresetTag('OPM')" class="px-3 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">🎵 #OPM</button>
+                        <button onclick="addPresetTag('Gaming')" class="px-3 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">🎮 #Gaming</button>
+                        <button onclick="addPresetTag('Anime')" class="px-3 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">⛩️ #Anime</button>
+                        <button onclick="addPresetTag('Chitchat')" class="px-3 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">💬 #Chitchat</button>
+                        <button onclick="addPresetTag('CollegeLife')" class="px-3 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">🎓 #CollegeLife</button>
+                    </div>
+                </div>
+
+                <!-- Region & Filter Preferences -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800/80">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1.5">Location Filter</label>
+                        <select id="locationPreference" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-brand-500">
+                            <option value="PH">🇵🇭 Philippines Only (Recommended)</option>
+                            <option value="GLOBAL">🌐 Global / Worldwide</option>
+                            <option value="ASIA">🌏 Asia Pacific</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1.5">Gender Preference</label>
+                        <select id="genderPreference" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-brand-500">
+                            <option value="ANY">Any Gender (Fastest Match)</option>
+                            <option value="FEMALE">Female Only (Requires Verification Badge)</option>
+                            <option value="MALE">Male Only</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terms Confirmation & Connect Button -->
+            <div class="space-y-4 text-center">
+                <label class="inline-flex items-center space-x-2 text-xs text-slate-400 cursor-pointer">
+                    <input type="checkbox" id="termsCheckbox" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-brand-500 focus:ring-brand-500 focus:ring-offset-slate-950">
+                    <span>I confirm I am at least 18 years old and agree to follow the safety community guidelines.</span>
+                </label>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button id="startChatBtn" onclick="startConnection()" class="w-full sm:w-auto px-10 py-4 rounded-xl bg-gradient-to-r from-brand-600 via-emerald-500 to-teal-500 text-slate-950 font-extrabold text-base tracking-wide hover:brightness-110 active:scale-95 transition-all duration-200 shadow-xl shadow-brand-500/25 flex items-center justify-center space-x-3">
+                        <i data-lucide="play" class="w-5 h-5 fill-slate-950"></i>
+                        <span>START CHATTING NOW</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= PANEL 2: ACTIVE CHAT / CALL INTERFACE ================= -->
+        <section id="chatPanel" class="hidden flex-1 flex flex-col lg:flex-row gap-4 h-[calc(100vh-120px)] min-h-[550px] relative">
+
+            <!-- MAIN MEDIA DISPLAY / STAGE AREA (LEFT/TOP) -->
+            <div id="mediaStage" class="flex-1 flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden relative shadow-2xl">
+                
+                <!-- Status Top Bar overlay -->
+                <div class="absolute top-0 inset-x-0 z-20 p-3 bg-gradient-to-b from-slate-950/90 via-slate-950/40 to-transparent flex items-center justify-between">
+                    <div class="flex items-center space-x-2 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60">
+                        <span id="callStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+                        <span id="callStatusText" class="text-xs font-medium text-slate-200">Searching for match...</span>
+                    </div>
+
+                    <!-- Stranger Details Badge -->
+                    <div id="strangerBadge" class="hidden flex items-center space-x-2 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-slate-700/60 text-xs">
+                        <i data-lucide="user" class="w-3.5 h-3.5 text-brand-500"></i>
+                        <span id="strangerNameText" class="font-bold text-slate-200">Stranger</span>
+                        <span id="strangerTagsBadge" class="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-teal-400">Match Tag: #Pinoy</span>
+                    </div>
+                </div>
+
+                <!-- Searching Overlay Loader -->
+                <div id="searchingOverlay" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                    <div class="relative w-24 h-24 mb-6 flex items-center justify-center">
+                        <div class="absolute inset-0 rounded-full border-4 border-brand-500/20 animate-ping"></div>
+                        <div class="absolute inset-2 rounded-full border-4 border-teal-500 border-t-transparent animate-spin"></div>
+                        <i data-lucide="search" class="w-8 h-8 text-brand-500 animate-bounce"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Finding a Stranger...</h3>
+                    <p class="text-xs text-slate-400 max-w-sm mb-4">Matching based on location filters and interest tags.</p>
+                    <button onclick="skipStranger()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
+                        Cancel Search
+                    </button>
+                </div>
+
+                <!-- Video / Canvas Display Containers -->
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-slate-950 relative overflow-hidden min-h-0">
+                    
+                    <!-- Stranger Stream Screen -->
+                    <div class="relative flex-1 bg-slate-900 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center group">
+                        <!-- Simulated Canvas Visualizer for Stranger -->
+                        <canvas id="strangerCanvas" class="w-full h-full object-cover filter-normal"></canvas>
+                        
+                        <!-- Video Mute Overlay -->
+                        <div id="strangerAudioVisualizerBar" class="absolute bottom-4 left-4 right-4 flex items-center justify-center space-x-1 h-8 bg-slate-950/60 backdrop-blur-sm rounded-lg px-3 border border-slate-800/80">
+                            <span class="text-[10px] text-slate-400 font-mono mr-2">AUDIO WAVE</span>
+                            <div class="wave-bar w-1 bg-brand-500 rounded-full h-3 animate-wave"></div>
+                            <div class="wave-bar w-1 bg-brand-500 rounded-full h-5 animate-wave"></div>
+                            <div class="wave-bar w-1 bg-brand-500 rounded-full h-2 animate-wave"></div>
+                            <div class="wave-bar w-1 bg-brand-500 rounded-full h-6 animate-wave"></div>
+                            <div class="wave-bar w-1 bg-brand-500 rounded-full h-4 animate-wave"></div>
+                        </div>
+
+                        <div class="absolute top-3 left-3 bg-slate-950/70 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-slate-300 font-semibold border border-slate-800 flex items-center space-x-1.5">
+                            <i data-lucide="user-check" class="w-3.5 h-3.5 text-brand-500"></i>
+                            <span>Stranger</span>
+                        </div>
+                    </div>
+
+                    <!-- User Local Camera Screen -->
+                    <div class="relative flex-1 bg-slate-900 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                        <video id="userVideo" autoplay muted playsinline class="w-full h-full object-cover transform -scale-x-100 filter-normal"></video>
+                        
+                        <!-- Fallback Canvas if Camera Disabled -->
+                        <canvas id="userCanvas" class="w-full h-full object-cover hidden filter-normal"></canvas>
+
+                        <div class="absolute top-3 left-3 bg-slate-950/70 backdrop-blur-md px-2.5 py-1 rounded-md text-[11px] text-slate-300 font-semibold border border-slate-800 flex items-center space-x-1.5">
+                            <i data-lucide="video" class="w-3.5 h-3.5 text-neon-cyan"></i>
+                            <span>You (Local Feed)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Call Control Actions Bar -->
+                <div class="p-3 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 z-20">
+                    <div class="flex items-center space-x-2">
+                        <!-- Big Next/Skip Button -->
+                        <button id="skipBtn" onclick="skipStranger()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-sm tracking-wide hover:brightness-110 active:scale-95 transition shadow-lg flex items-center space-x-2">
+                            <span>NEXT</span>
+                            <i data-lucide="skip-forward" class="w-4 h-4 fill-slate-950"></i>
+                        </button>
+                        
+                        <button onclick="disconnectChat()" class="px-4 py-2.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 font-semibold text-xs transition">
+                            Stop
+                        </button>
+                    </div>
+
+                    <!-- Media Audio/Cam Toggles -->
+                    <div class="flex items-center space-x-2">
+                        <button onclick="toggleMic()" id="micBtn" title="Toggle Mic" class="p-2.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition border border-slate-700">
+                            <i data-lucide="mic" class="w-4 h-4" id="micIcon"></i>
+                        </button>
+                        <button onclick="toggleCam()" id="camBtn" title="Toggle Video" class="p-2.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition border border-slate-700">
+                            <i data-lucide="video" class="w-4 h-4" id="camIcon"></i>
+                        </button>
+                        <select id="filterSelect" onchange="applyVideoFilter(this.value)" class="bg-slate-800 text-slate-300 text-xs rounded-xl px-2.5 py-2 border border-slate-700 focus:outline-none">
+                            <option value="filter-normal">Filter: Normal</option>
+                            <option value="filter-neon">Filter: Neon Cyber</option>
+                            <option value="filter-warm">Filter: Warm Sunset</option>
+                            <option value="filter-bw">Filter: B&W Noir</option>
+                        </select>
+                    </div>
+
+                    <!-- Report Button -->
+                    <div>
+                        <button onclick="openModal('reportModal')" class="p-2.5 rounded-xl bg-slate-900 text-slate-400 hover:text-red-400 border border-slate-800 transition text-xs flex items-center space-x-1">
+                            <i data-lucide="flag" class="w-4 h-4"></i>
+                            <span class="hidden sm:inline">Report</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INTEGRATED TEXT CHAT DRAWER (RIGHT/BOTTOM) -->
+            <div id="chatDrawer" class="w-full lg:w-96 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+                
+                <!-- Chat Drawer Header -->
+                <div class="p-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="message-circle" class="w-4 h-4 text-brand-500"></i>
+                        <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">Live Chat</span>
+                    </div>
+                    <button onclick="clearChatLog()" class="text-[11px] text-slate-500 hover:text-slate-300 transition">Clear Log</button>
+                </div>
+
+                <!-- Chat Message History -->
+                <div id="chatMessages" class="flex-1 p-4 space-y-3 overflow-y-auto text-xs leading-relaxed max-h-[350px] lg:max-h-none">
+                    <div class="text-center py-2">
+                        <span class="px-3 py-1 rounded-full bg-slate-800/80 text-[10px] text-slate-400 border border-slate-700/50">
+                            🔒 You're connected anonymously. Stay safe!
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Typing Status Indicator -->
+                <div id="typingIndicator" class="px-4 py-1.5 text-[11px] text-slate-400 font-medium italic hidden flex items-center space-x-1.5 bg-slate-950/40">
+                    <span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-ping"></span>
+                    <span>Stranger is typing...</span>
+                </div>
+
+                <!-- Quick Reaction Pills -->
+                <div class="px-3 py-1.5 bg-slate-950/80 border-t border-slate-800/80 flex items-center gap-1.5 overflow-x-auto text-xs">
+                    <button onclick="sendQuickMessage('Hello! taga saan ka?')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap">👋 Hello!</button>
+                    <button onclick="sendQuickMessage('ASL pls?')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap">❓ ASL?</button>
+                    <button onclick="sendQuickMessage(' Anong hobbies mo?')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 whitespace-nowrap">🎮 Hobbies?</button>
+                    <button onclick="sendEmoji('❤️')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">❤️</button>
+                    <button onclick="sendEmoji('😂')" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">😂</button>
+                </div>
+
+                <!-- Text Input Box -->
+                <div class="p-3 bg-slate-950 border-t border-slate-800">
+                    <form onsubmit="handleSendMessage(event)" class="flex items-center space-x-2">
+                        <input type="text" id="chatInput" placeholder="Type a message..." disabled class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-brand-500 disabled:opacity-50 transition">
+                        <button type="submit" id="sendBtn" disabled class="p-2.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-slate-950 rounded-xl transition flex items-center justify-center font-bold">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full border-t border-slate-800/80 bg-slate-950 py-3 px-4 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>&copy; 2026 <span class="text-brand-500 font-bold">esmiringle</span> • Anonymous Social Platform.</p>
+            <div class="flex items-center space-x-4 text-[11px]">
+                <a href="#" onclick="openModal('guidelinesModal'); return false;" class="hover:text-slate-300 transition">Community Rules</a>
+                <span>•</span>
+                <a href="#" onclick="alert('esmiringle ensures zero-log privacy for anonymous video/text sessions.'); return false;" class="hover:text-slate-300 transition">Privacy & Security</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================= MODALS & OVERLAYS ================= -->
+
+    <!-- Safety & Guidelines Modal -->
+    <div id="guidelinesModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="shield-check" class="w-5 h-5 text-brand-500"></i>
+                    <h3 class="text-base font-bold text-white">esmiringle Guidelines</h3>
+                </div>
+                <button onclick="closeModal('guidelinesModal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+                <p class="flex items-start space-x-2">
+                    <span class="text-brand-500 font-bold">1.</span>
+                    <span><strong>Respect Real People:</strong> No harassment, hate speech, vulgarity, or nudity.</span>
+                </p>
+                <p class="flex items-start space-x-2">
+                    <span class="text-brand-500 font-bold">2.</span>
+                    <span><strong>Keep Personal Details Safe:</strong> Never share real full names, social accounts, phone numbers, or passwords.</span>
+                </p>
+                <p class="flex items-start space-x-2">
+                    <span class="text-brand-500 font-bold">3.</span>
+                    <span><strong>Strictly 18+:</strong> Minors are not permitted on video or audio rooms.</span>
+                </p>
+            </div>
+            <button onclick="closeModal('guidelinesModal')" class="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-slate-950 font-bold text-xs transition">I Understand & Agree</button>
+        </div>
+    </div>
+
+    <!-- Report Stranger Modal -->
+    <div id="reportModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                    <i data-lucide="flag" class="w-5 h-5 text-red-500"></i>
+                    <span>Report Current Stranger</span>
+                </h3>
+                <button onclick="closeModal('reportModal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <p class="text-xs text-slate-400">Select reason for reporting. Our moderation system will immediately disconnect and ban offending bots/users.</p>
+            <div class="space-y-2 text-xs">
+                <label class="flex items-center space-x-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700">
+                    <input type="radio" name="reportReason" value="inappropriate" checked class="text-brand-500">
+                    <span>Inappropriate Behavior / Nudity</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700">
+                    <input type="radio" name="reportReason" value="bot">
+                    <span>Automated Bot / Fake Video</span>
+                </label>
+                <label class="flex items-center space-x-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700">
+                    <input type="radio" name="reportReason" value="spam">
+                    <span>Spamming / Advertising Links</span>
+                </label>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="closeModal('reportModal')" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-semibold">Cancel</button>
+                <button onclick="submitReport()" class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-xs text-white font-semibold">Submit & Skip</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= JAVASCRIPT APP LOGIC ================= -->
+    <script>
+        // App State Management
+        let appState = {
+            activeMode: 'video', // 'text', 'voice', 'video'
+            isConnected: false,
+            isSearching: false,
+            soundEnabled: true,
+            userMediaStream: null,
+            micMuted: false,
+            camOff: false,
+            activeTags: ['Pinoy', 'Chitchat'],
+            currentStranger: null,
+            strangerTypingTimer: null,
+            strangerResponseTimer: null,
+            strangerCanvasAnimId: null
+        };
+
+        // Real Conversations Knowledge Base (Taglish / PH Context)
+        const PH_STRANGER_PERSONAS = [
+            {
+                name: "Marco",
+                tag: "Gaming",
+                dialogues: [
+                    "uy hello! Taga saan ka bro?",
+                    "nag lalaro ka ba ng Valorant or ML?",
+                    "niceee haha boring kasi mag-isa mag laro e",
+                    "ano rank mo dun?",
+                    "G ka laro later?"
+                ]
+            },
+            {
+                name: "Bea",
+                tag: "OPM",
+                dialogues: [
+                    "hey! tagalog reader ka rin?",
+                    "nakikinig ka rin ba sa Cup of Joe or Lola Amour?",
+                    "solid trip ung mga OPM hits ngayon nuh?",
+                    "san ka sa PH, QC me!"
+                ]
+            },
+            {
+                name: "Ken",
+                tag: "Pinoy",
+                dialogues: [
+                    "Hello po! M22 Manila here haha ASL?",
+                    "kumain ka na ba dinner?",
+                    "kamusta weekend mo?",
+                    "kwentuhan lang tamang chill"
+                ]
+            },
+            {
+                name: "Alyssa",
+                tag: "Anime",
+                dialogues: [
+                    "konichiwa! haha charot",
+                    "nanonood ka ng Anime bro/sis?",
+                    "Gintama at Jujutsu Kaisen pinapanood ko ngayon!",
+                    "sino fav character mo?"
+                ]
+            }
+        ];
+
+        // Web Audio Synthesizer Engine (Sound FX Generator)
+        class AudioSynth {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playTone(freq, type, duration) {
+                if (!appState.soundEnabled) return;
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type || 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e){}
+            }
+            playConnect() {
+                this.playTone(523.25, 'triangle', 0.15); // C5
+                setTimeout(() => this.playTone(659.25, 'triangle', 0.25), 100); // E5
+            }
+            playDisconnect() {
+                this.playTone(400, 'sawtooth', 0.15);
+                setTimeout(() => this.playTone(250, 'sawtooth', 0.2), 100);
+            }
+            playMessagePop() {
+                this.playTone(800, 'sine', 0.08);
+            }
+        }
+        const synth = new AudioSynth();
+
+        // DOM Elements Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            renderTags();
+            setupTagInput();
+            initStrangerCanvas();
+            animateOnlineCounter();
+        });
+
+        // Mode Selection Handlers
+        function selectMode(mode) {
+            appState.activeMode = mode;
+            document.querySelectorAll('.mode-card').forEach(card => {
+                card.classList.remove('border-brand-500/80', 'border-neon-cyan/80', 'shadow-lg');
+            });
+            const selectedCard = document.getElementById(`card-mode-${mode}`);
+            if (selectedCard) {
+                selectedCard.classList.add('border-brand-500/80', 'shadow-lg');
+            }
+        }
+
+        // Interest Tag Management
+        function setupTagInput() {
+            const input = document.getElementById('tagInput');
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = input.value.trim().replace(/^#/, '');
+                    if (val && !appState.activeTags.includes(val)) {
+                        appState.activeTags.push(val);
+                        renderTags();
+                        input.value = '';
+                    }
+                }
+            });
+        }
+
+        function addPresetTag(tag) {
+            if (!appState.activeTags.includes(tag)) {
+                appState.activeTags.push(tag);
+                renderTags();
+            }
+        }
+
+        function removeTag(tag) {
+            appState.activeTags = appState.activeTags.filter(t => t !== tag);
+            renderTags();
+        }
+
+        function renderTags() {
+            const container = document.getElementById('activeTagsContainer');
+            container.innerHTML = '';
+            appState.activeTags.forEach(tag => {
+                const badge = document.createElement('span');
+                badge.className = 'px-2.5 py-1 text-xs rounded-lg bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center space-x-1 font-medium';
+                badge.innerHTML = `<span>#${tag}</span> <button onclick="removeTag('${tag}')" class="hover:text-white ml-1">&times;</button>`;
+                container.appendChild(badge);
+            });
+        }
+
+        // Live Dynamic Online Users Counter
+        function animateOnlineCounter() {
+            let count = 14392;
+            setInterval(() => {
+                const delta = Math.floor(Math.random() * 11) - 5;
+                count += delta;
+                document.getElementById('onlineCountDisplay').innerText = count.toLocaleString();
+            }, 3500);
+        }
+
+        // Connection Controller
+        function startConnection() {
+            const termsChecked = document.getElementById('termsCheckbox').checked;
+            if (!termsChecked) {
+                alert('Please accept the guidelines & confirm your age before starting.');
+                return;
+            }
+
+            document.getElementById('landingPanel').classList.add('hidden');
+            document.getElementById('chatPanel').classList.remove('hidden');
+
+            // Initialize camera/mic preview for User
+            initUserMedia();
+
+            // Trigger Search logic
+            skipStranger();
+        }
+
+        function resetToLanding() {
+            disconnectChat();
+            document.getElementById('chatPanel').classList.add('hidden');
+            document.getElementById('landingPanel').classList.remove('hidden');
+        }
+
+        // Local WebCam Video Setup
+        async function initUserMedia() {
+            if (appState.activeMode === 'text') {
+                document.getElementById('userVideo').classList.add('hidden');
+                document.getElementById('userCanvas').classList.remove('hidden');
+                drawFallbackUserAvatar();
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: appState.activeMode === 'video',
+                    audio: true
+                });
+                appState.userMediaStream = stream;
+                const userVideo = document.getElementById('userVideo');
+                userVideo.srcObject = stream;
+                userVideo.classList.remove('hidden');
+                document.getElementById('userCanvas').classList.add('hidden');
+            } catch (err) {
+                console.warn('Camera/Mic permission declined or unavailable. Using simulated canvas feed.');
+                document.getElementById('userVideo').classList.add('hidden');
+                document.getElementById('userCanvas').classList.remove('hidden');
+                drawFallbackUserAvatar();
+            }
+        }
+
+        function drawFallbackUserAvatar() {
+            const canvas = document.getElementById('userCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 400;
+            canvas.height = 300;
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#22c55e';
+            ctx.font = '14px Plus Jakarta Sans';
+            ctx.textAlign = 'center';
+            ctx.fillText('You (Audio Only / Anonymous)', canvas.width / 2, canvas.height / 2);
+        }
+
+        // Skip / Match Logic
+        function skipStranger() {
+            synth.playDisconnect();
+            clearStrangerTimers();
+
+            appState.isConnected = false;
+            appState.isSearching = true;
+
+            // UI Searching Overlay
+            document.getElementById('searchingOverlay').classList.remove('hidden');
+            document.getElementById('strangerBadge').classList.add('hidden');
+            document.getElementById('callStatusText').innerText = "Searching for match...";
+            document.getElementById('callStatusDot').className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping";
+
+            // Disable Input
+            document.getElementById('chatInput').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+
+            // Add Search log
+            addSystemMessage("Searching for a stranger with matching tags...");
+
+            // Random Search Delay (1.5s - 3s)
+            const searchTime = Math.floor(Math.random() * 1500) + 1500;
+            setTimeout(() => {
+                if (appState.isSearching) {
+                    connectNewStranger();
+                }
+            }, searchTime);
+        }
+
+        function connectNewStranger() {
+            appState.isSearching = false;
+            appState.isConnected = true;
+
+            synth.playConnect();
+
+            // Pick persona matching user tags if available
+            const matchedPersona = PH_STRANGER_PERSONAS[Math.floor(Math.random() * PH_STRANGER_PERSONAS.length)];
+            appState.currentStranger = { ...matchedPersona, dialogueIndex: 0 };
+
+            // Update UI
+            document.getElementById('searchingOverlay').classList.add('hidden');
+            document.getElementById('strangerBadge').classList.remove('hidden');
+            document.getElementById('strangerNameText').innerText = matchedPersona.name;
+            document.getElementById('strangerTagsBadge').innerText = `#${matchedPersona.tag}`;
+            document.getElementById('callStatusText').innerText = "Connected to Stranger";
+            document.getElementById('callStatusDot').className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+
+            // Enable Chat
+            document.getElementById('chatInput').disabled = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('chatInput').focus();
+
+            addSystemMessage(`You are now chatting with Stranger (${matchedPersona.tag} fan). Say hi!`);
+
+            // Trigger Stranger First Auto Dialogue
+            scheduleStrangerResponse();
+        }
+
+        function scheduleStrangerResponse() {
+            if (!appState.isConnected || !appState.currentStranger) return;
+
+            const persona = appState.currentStranger;
+            if (persona.dialogueIndex >= persona.dialogues.length) return;
+
+            const delay = Math.floor(Math.random() * 2000) + 2000;
+            appState.strangerResponseTimer = setTimeout(() => {
+                if (!appState.isConnected) return;
+
+                // Show typing indicator
+                document.getElementById('typingIndicator').classList.remove('hidden');
+
+                const typingDuration = Math.floor(Math.random() * 1500) + 1000;
+                setTimeout(() => {
+                    if (!appState.isConnected) return;
+
+                    document.getElementById('typingIndicator').classList.add('hidden');
+                    const msgText = persona.dialogues[persona.dialogueIndex];
+                    persona.dialogueIndex++;
+
+                    addMessage('Stranger', msgText, 'stranger');
+                    synth.playMessagePop();
+
+                    // Loop next message if applicable
+                    if (persona.dialogueIndex < persona.dialogues.length && Math.random() > 0.4) {
+                        scheduleStrangerResponse();
+                    }
+                }, typingDuration);
+
+            }, delay);
+        }
+
+        function disconnectChat() {
+            synth.playDisconnect();
+            clearStrangerTimers();
+            appState.isConnected = false;
+            appState.isSearching = false;
+
+            document.getElementById('chatInput').disabled = true;
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('callStatusText').innerText = "Disconnected";
+            document.getElementById('callStatusDot').className = "w-2.5 h-2.5 rounded-full bg-red-500";
+            
+            addSystemMessage("You have disconnected.");
+        }
+
+        function clearStrangerTimers() {
+            if (appState.strangerResponseTimer) clearTimeout(appState.strangerResponseTimer);
+            document.getElementById('typingIndicator').classList.add('hidden');
+        }
+
+        // Chat Messaging Log Handlers
+        function handleSendMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg || !appState.isConnected) return;
+
+            addMessage('You', msg, 'user');
+            input.value = '';
+
+            // Dynamic Bot reply logic based on user input
+            if (appState.currentStranger && Math.random() > 0.3) {
+                scheduleDynamicReply(msg);
+            }
+        }
+
+        function sendQuickMessage(text) {
+            if (!appState.isConnected) return;
+            addMessage('You', text, 'user');
+            scheduleDynamicReply(text);
+        }
+
+        function sendEmoji(emoji) {
+            if (!appState.isConnected) return;
+            addMessage('You', emoji, 'user');
+        }
+
+        function scheduleDynamicReply(userMsg) {
+            clearStrangerTimers();
+            document.getElementById('typingIndicator').classList.remove('hidden');
+
+            setTimeout(() => {
+                if (!appState.isConnected) return;
+                document.getElementById('typingIndicator').classList.add('hidden');
+
+                let reply = "Oo nga e haha!";
+                const lower = userMsg.toLowerCase();
+                if (lower.includes('asl') || lower.includes('taga saan')) {
+                    reply = "21 M from Quezon City. Ikaw?";
+                } else if (lower.includes('valorant') || lower.includes('ml')) {
+                    reply = "Gold rank palang me sa Valo, tara laro later!";
+                } else if (lower.includes('hello') || lower.includes('hi')) {
+                    reply = "Hellooo! kamusta?";
+                }
+
+                addMessage('Stranger', reply, 'stranger');
+                synth.playMessagePop();
+            }, 1800);
+        }
+
+        function addMessage(sender, text, type) {
+            const chatBox = document.getElementById('chatMessages');
+            const msgDiv = document.createElement('div');
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            if (type === 'user') {
+                msgDiv.className = 'flex flex-col items-end space-y-1';
+                msgDiv.innerHTML = `
+                    <div class="bg-brand-600/90 text-slate-950 font-medium px-3.5 py-2 rounded-2xl rounded-tr-none max-w-[85%] text-xs shadow-md">
+                        ${escapeHTML(text)}
+                    </div>
+                    <span class="text-[10px] text-slate-500">${time}</span>
+                `;
+            } else {
+                msgDiv.className = 'flex flex-col items-start space-y-1';
+                msgDiv.innerHTML = `
+                    <div class="bg-slate-800 text-slate-200 px-3.5 py-2 rounded-2xl rounded-tl-none max-w-[85%] text-xs border border-slate-700/80 shadow-md">
+                        <span class="font-bold text-teal-400 block text-[10px] mb-0.5">${sender}</span>
+                        ${escapeHTML(text)}
+                    </div>
+                    <span class="text-[10px] text-slate-500">${time}</span>
+                `;
+            }
+
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function addSystemMessage(text) {
+            const chatBox = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = 'text-center py-1.5';
+            div.innerHTML = `<span class="px-2.5 py-1 rounded-md bg-slate-950/60 text-[10px] text-slate-400 border border-slate-800">${escapeHTML(text)}</span>`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function clearChatLog() {
+            document.getElementById('chatMessages').innerHTML = '';
+            addSystemMessage("Chat log cleared.");
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Camera / Audio Controls
+        function toggleMic() {
+            appState.micMuted = !appState.micMuted;
+            const btn = document.getElementById('micBtn');
+            const icon = document.getElementById('micIcon');
+
+            if (appState.userMediaStream) {
+                appState.userMediaStream.getAudioTracks().forEach(t => t.enabled = !appState.micMuted);
+            }
+
+            if (appState.micMuted) {
+                btn.classList.add('bg-red-600/20', 'text-red-400', 'border-red-500/40');
+                icon.setAttribute('data-lucide', 'mic-off');
+            } else {
+                btn.classList.remove('bg-red-600/20', 'text-red-400', 'border-red-500/40');
+                icon.setAttribute('data-lucide', 'mic');
+            }
+            lucide.createIcons();
+        }
+
+        function toggleCam() {
+            appState.camOff = !appState.camOff;
+            const btn = document.getElementById('camBtn');
+            const icon = document.getElementById('camIcon');
+
+            if (appState.userMediaStream) {
+                appState.userMediaStream.getVideoTracks().forEach(t => t.enabled = !appState.camOff);
+            }
+
+            if (appState.camOff) {
+                btn.classList.add('bg-red-600/20', 'text-red-400', 'border-red-500/40');
+                icon.setAttribute('data-lucide', 'video-off');
+            } else {
+                btn.classList.remove('bg-red-600/20', 'text-red-400', 'border-red-500/40');
+                icon.setAttribute('data-lucide', 'video');
+            }
+            lucide.createIcons();
+        }
+
+        function applyVideoFilter(filterClass) {
+            const userVid = document.getElementById('userVideo');
+            const userCanvas = document.getElementById('userCanvas');
+            const strangerCanvas = document.getElementById('strangerCanvas');
+
+            [userVid, userCanvas, strangerCanvas].forEach(el => {
+                el.className = el.className.replace(/filter-\w+/g, '');
+                el.classList.add(filterClass);
+            });
+        }
+
+        function toggleSound() {
+            appState.soundEnabled = !appState.soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            if (appState.soundEnabled) {
+                icon.setAttribute('data-lucide', 'volume-2');
+            } else {
+                icon.setAttribute('data-lucide', 'volume-x');
+            }
+            lucide.createIcons();
+        }
+
+        // Stranger Avatar Particle Canvas Visualizer
+        function initStrangerCanvas() {
+            const canvas = document.getElementById('strangerCanvas');
+            const ctx = canvas.getContext('2d');
+
+            function resize() {
+                canvas.width = canvas.parentElement.clientWidth || 400;
+                canvas.height = canvas.parentElement.clientHeight || 300;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            let hue = 0;
+            function render() {
+                ctx.fillStyle = 'rgba(11, 15, 23, 0.2)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (appState.isConnected) {
+                    // Render Animated Avatar Mesh & Voice Wave Simulation
+                    const centerX = canvas.width / 2;
+                    const centerY = canvas.height / 2;
+
+                    hue = (hue + 1) % 360;
+
+                    // Neon Pulse Aura
+                    const grad = ctx.createRadialGradient(centerX, centerY, 20, centerX, centerY, 120);
+                    grad.addColorStop(0, `hsla(${hue}, 80%, 50%, 0.4)`);
+                    grad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, 130, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Avatar Circle Head
+                    ctx.fillStyle = '#1e293b';
+                    ctx.strokeStyle = `hsl(${hue}, 70%, 50%)`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY - 20, 35, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Avatar Body Silhouette
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY + 65, 55, Math.PI, 0);
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    // Offline Standby Graphics
+                    ctx.fillStyle = '#1e293b';
+                    ctx.font = '13px Plus Jakarta Sans';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Waiting for Stranger Video Feed...', canvas.width / 2, canvas.height / 2);
+                }
+
+                requestAnimationFrame(render);
+            }
+            render();
+        }
+
+        // Modal Handlers
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function submitReport() {
+            closeModal('reportModal');
+            addSystemMessage("Report received. Disconnecting and blocking user...");
+            setTimeout(() => {
+                skipStranger();
+            }, 800);
+        }
+
+        // Keyboard Shortcuts (ESC to skip)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && appState.isConnected) {
+                skipStranger();
+            }
+        });
+    </script>
+</body>
+</html>
